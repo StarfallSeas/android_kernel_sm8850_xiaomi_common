@@ -4740,16 +4740,18 @@ int try_to_wake_up(struct task_struct *p, unsigned int state, int wake_flags)
 		 * A similar smp_rmb() lives in __task_needs_rq_lock().
 		 */
 		smp_rmb();
-		if (READ_ONCE(p->on_rq) && ttwu_runnable(p, wake_flags))
-			break;
+		if (READ_ONCE(p->on_rq)) {
+		if (ttwu_runnable(p, wake_flags))
+			goto unlock;
+	} else {
 
 #ifdef CONFIG_SMP
 		/*
-		 * Ensure we load p->on_cpu _after_ p->on_rq, otherwise it would be
-		 * possible to, falsely, observe p->on_cpu == 0.
+		 * Ensure we load p->on_cpu _after_ p->on_rq, otherwise it would
+		 * be possible to, falsely, observe p->on_cpu == 0.
 		 *
-		 * One must be running (->on_cpu == 1) in order to remove oneself
-		 * from the runqueue.
+		 * One must be running (->on_cpu == 1) in order to remove
+		 * oneself from the runqueue.
 		 *
 		 * __schedule() (switch to task 'p')	try_to_wake_up()
 		 *   STORE p->on_cpu = 1		  LOAD p->on_rq
@@ -4763,20 +4765,16 @@ int try_to_wake_up(struct task_struct *p, unsigned int state, int wake_flags)
 		 * Pairs with the LOCK+smp_mb__after_spinlock() on rq->lock in
 		 * __schedule().  See the comment for smp_mb__after_spinlock().
 		 *
-		 * Form a control-dep-acquire with p->on_rq == 0 above, to ensure
-		 * schedule()'s deactivate_task() has 'happened' and p will no longer
-		 * care about it's own p->state. See the comment in __schedule().
+		 * Form a control-dep-acquire with p->on_rq == 0 above, to
+		 * ensure schedule()'s deactivate_task() has 'happened' and p
+		 * will no longer care about it's own p->state. See the comment
+		 * in __schedule().
 		 */
 		smp_acquire__after_ctrl_dep();
+#endif
+	}
 
-		/*
-		 * We're doing the wakeup (@success == 1), they did a dequeue (p->on_rq
-		 * == 0), which means we need to do an enqueue, change p->state to
-		 * TASK_WAKING such that we can unlock p->pi_lock before doing the
-		 * enqueue, such as ttwu_queue_wakelist().
-		 */
-		WRITE_ONCE(p->__state, TASK_WAKING);
-		set_blocked_on_runnable(p);
+#ifdef CONFIG_SMP
 
 		/*
 		 * If the owning (remote) CPU is still in the middle of schedule() with
