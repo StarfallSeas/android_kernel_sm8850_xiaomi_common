@@ -44,12 +44,6 @@ jobs:
           sed -i 's/${scm_version}//' scripts/setlocalversion
           sed -i 's/check_defconfig//' build.config.gki
 
-          echo "CONFIG_LOCALVERSION_AUTO=n" >> arch/arm64/configs/gki_defconfig
-          echo "CONFIG_HEADERS_INSTALL=n" >> arch/arm64/configs/gki_defconfig
-          echo "CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE=y" >> arch/arm64/configs/gki_defconfig
-          echo "CONFIG_RUST=y" >> arch/arm64/configs/gki_defconfig
-          echo "CONFIG_ANDROID_BINDER_IPC_RUST=m" >> arch/arm64/configs/gki_defconfig
-
           YY=$(TZ=Asia/Shanghai date +%y)
           WW=$(TZ=Asia/Shanghai date +%V)
           DOW=$(TZ=Asia/Shanghai date +%u)
@@ -57,7 +51,12 @@ jobs:
           BUILD_TAG="android16-Catalyst-StarfallSeas-${YY}${WW}${LETTER}"
           echo "BUILD_TAG=$BUILD_TAG" >> $GITHUB_ENV
 
-          sed -i "\$s|echo \"\\\$res\"|echo \"-${BUILD_TAG}\"|" scripts/setlocalversion
+          echo "CONFIG_LOCALVERSION_AUTO=n" >> arch/arm64/configs/gki_defconfig
+          echo "CONFIG_HEADERS_INSTALL=n" >> arch/arm64/configs/gki_defconfig
+          echo "CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE=y" >> arch/arm64/configs/gki_defconfig
+          echo "CONFIG_RUST=y" >> arch/arm64/configs/gki_defconfig
+          echo "CONFIG_ANDROID_BINDER_IPC_RUST=m" >> arch/arm64/configs/gki_defconfig
+          sed -i "s/CONFIG_LOCALVERSION=.*/CONFIG_LOCALVERSION=\"-${BUILD_TAG}\"/" arch/arm64/configs/gki_defconfig
 
       - name: Build
         run: |
