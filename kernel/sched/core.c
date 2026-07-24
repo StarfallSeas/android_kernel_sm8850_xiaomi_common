@@ -4741,9 +4741,9 @@ int try_to_wake_up(struct task_struct *p, unsigned int state, int wake_flags)
 		 */
 		smp_rmb();
 		if (READ_ONCE(p->on_rq)) {
-		if (ttwu_runnable(p, wake_flags))
-			goto unlock;
-	} else {
+			if (ttwu_runnable(p, wake_flags))
+				goto unlock;
+		} else {
 
 #ifdef CONFIG_SMP
 		/*
@@ -4828,6 +4828,7 @@ int try_to_wake_up(struct task_struct *p, unsigned int state, int wake_flags)
 #endif /* CONFIG_SMP */
 		ttwu_queue(p, cpu, wake_flags);
 	}
+unlock:
 out:
 	activate_blocked_waiters(cpu_rq(task_cpu(p)), p, wake_flags);
 	if (success) {
