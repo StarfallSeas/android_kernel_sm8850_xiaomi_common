@@ -3,7 +3,6 @@ name: Build GKI Kernel
 env:
   TZ: Asia/Shanghai
   KERNEL_VERSION: '6.12'
-  KERNEL_NAME: android16-5-ga8f88ad96df3-ab13929693-4k
 
 on:
   workflow_dispatch:
@@ -42,17 +41,23 @@ jobs:
         run: |
           sed -i 's/ -dirty//g' scripts/setlocalversion
           sed -i '$i res=$(echo "$res" | sed '\''s/-dirty//g'\'')' scripts/setlocalversion
-          sed -i "\$s|echo \"\\\$res\"|echo \"-${{ env.KERNEL_NAME }}\"|" scripts/setlocalversion
           sed -i 's/${scm_version}//' scripts/setlocalversion
           sed -i 's/check_defconfig//' build.config.gki
 
-          cat >> arch/arm64/configs/gki_defconfig << 'EOF'
-          CONFIG_LOCALVERSION_AUTO=n
-          CONFIG_HEADERS_INSTALL=n
-          CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE=y
-          CONFIG_RUST=y
-          CONFIG_ANDROID_BINDER_IPC_RUST=m
-          EOF
+          echo "CONFIG_LOCALVERSION_AUTO=n" >> arch/arm64/configs/gki_defconfig
+          echo "CONFIG_HEADERS_INSTALL=n" >> arch/arm64/configs/gki_defconfig
+          echo "CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE=y" >> arch/arm64/configs/gki_defconfig
+          echo "CONFIG_RUST=y" >> arch/arm64/configs/gki_defconfig
+          echo "CONFIG_ANDROID_BINDER_IPC_RUST=m" >> arch/arm64/configs/gki_defconfig
+
+          YY=$(TZ=Asia/Shanghai date +%y)
+          WW=$(TZ=Asia/Shanghai date +%V)
+          DOW=$(TZ=Asia/Shanghai date +%u)
+          LETTER=$(echo abcdefg | cut -c${DOW})
+          BUILD_TAG="android16-Catalyst-StarfallSeas-${YY}${WW}${LETTER}"
+          echo "BUILD_TAG=$BUILD_TAG" >> $GITHUB_ENV
+
+          sed -i "\$s|echo \"\\\$res\"|echo \"-${BUILD_TAG}\"|" scripts/setlocalversion
 
       - name: Build
         run: |
@@ -84,7 +89,7 @@ jobs:
       - name: Upload Image
         uses: actions/upload-artifact@v4
         with:
-          name: kernel-${{ env.KERNEL_VERSION }}-${{ env.KERNEL_NAME }}
+          name: kernel-${{ env.KERNEL_VERSION }}-${{ env.BUILD_TAG }}
           path: out/arch/arm64/boot/Image
           if-no-files-found: error
           retention-days: 7
